@@ -135,15 +135,15 @@ Example:
 
 ```console
 $ cat terraform.tfvars
-prefix               = "hrv-gl-aaa"
-do_token             = "************"
-region               = "fra1"
-harvester_node_count = 3
+prefix                 = "hrv-gl-aaa"
+do_token               = "************"
+region                 = "fra1"
+harvester_node_count   = 3
 harvester_cluster_size = "medium"
-rancher_api_url      = "https://demo-rancher-gl.<PUBLIC_IP>.sslip.io"
-rancher_access_key   = "************"
-rancher_secret_key   = "************"
-rancher_insecure     = true
+rancher_api_url        = "https://demo-rancher-gl.<PUBLIC_IP>.sslip.io"
+rancher_access_key     = "************"
+rancher_secret_key     = "************"
+rancher_insecure       = true
 ```
 
 ##### Harvester Cluster BBB Deployment
