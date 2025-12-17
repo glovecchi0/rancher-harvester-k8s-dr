@@ -85,13 +85,14 @@ Example:
 
 ```console
 $ cat terraform.tfvars
-prefix           = "demo-rancher-gl"
-do_token         = "************"
-region           = "fra1"
-instance_count   = 3
-os_type          = "sles"
-rancher_hostname = "demo-rancher-gl"
-rancher_password = "************"
+prefix              = "demo-rancher-gl"
+do_token            = "************"
+region              = "fra1"
+instance_count      = 3
+create_ssh_key_pair = true
+user_tag            = "demo-rancher-gl"
+rancher_hostname    = "demo-rancher-gl"
+rancher_password    = "************"
 ```
 
 3. Terraform Deploy
