@@ -57,7 +57,7 @@ Before starting the Disaster Recovery workflow, the following infrastructure com
   - Provision RKE2 clusters on both Harvester clusters
   - Manage lifecycle operations for the downstream Kubernetes clusters
 
-If the infrastructure is not already prepared, it must be deployed before following this guide.
+**If the infrastructure is not already prepared, it must be deployed before following this guide.**
 
 ##### Rancher Deployment
 
@@ -71,7 +71,7 @@ cd tf-rancher-up
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on DigitalOcean, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
 Copy this example file and rename it to `terraform.tfvars`:
 
@@ -86,11 +86,9 @@ Example:
 ```console
 $ cat terraform.tfvars
 prefix              = "demo-rancher-gl"
-do_token            = "************"
-region              = "fra1"
+project_id          = "************"
+region              = "europe-west8"
 instance_count      = 3
-create_ssh_key_pair = true
-user_tag            = "demo-rancher-gl"
 rancher_hostname    = "demo-rancher-gl"
 rancher_password    = "************"
 ```
@@ -110,6 +108,42 @@ The [official documentation](https://ranchermanager.docs.rancher.com/reference-g
 
 The [official documentation](https://docs.harvesterhci.io/v1.6/rancher/harvester-ui-extension) explains this process very well.
 
+6. Install Longhorn Requirements
+
+```bash
+# Make sure you are in the path where the Terraform code used to deploy Rancher is located
+# recipes/upstream/google-cloud/rke2
+cat <<'EOF' > prepare-longhorn.sh
+#!/usr/bin/env bash
+set -euo pipefail
+
+OS_TYPE=$(grep '^os_type' terraform.tfvars 2>/dev/null | head -1 | sed -E 's/.*=\s*"?([^"]+)"?/\1/' | tr -d ' "' || awk '/variable "os_type"/ {f=1} f && /default/ {gsub(/[" ]/,"",$3); print $3; exit}' variables.tf)
+PREFIX=$(grep '^prefix' terraform.tfvars 2>/dev/null | head -1 | sed -E 's/.*=\s*"?([^"]+)"?/\1/' | tr -d ' "' || awk '/variable "prefix"/ {f=1} f && /default/ {gsub(/[" ]/,"",$3); print $3; exit}' variables.tf)
+
+SSH_USER=$([[ "$OS_TYPE" == "sles" ]] && echo sles || echo ubuntu)
+SSH_KEY="${PREFIX}-ssh_private_key.pem"
+
+for IP in $(terraform output instances_public_ip | tr -d '[]" ,' | tr '\n' ' '); do
+  ssh -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null -i "$SSH_KEY" "$SSH_USER@$IP" "
+    sudo zypper --non-interactive addrepo https://download.opensuse.org/repositories/network/SLE_15/network.repo || true
+    sudo zypper --non-interactive --gpg-auto-import-keys refresh
+    sudo zypper --non-interactive install -y open-iscsi
+    sudo systemctl enable iscsid
+    sudo systemctl start iscsid
+  "
+done
+EOF
+```
+
+```bash
+chmod +x prepare-longhorn.sh
+sh prepare-longhorn.sh
+```
+
+7. Install Longhorn from the UI
+
+The [official documentation](https://longhorn.io/docs/1.10.1/deploy/install/install-with-rancher/) explains this process very well.
+
 ##### Harvester Cluster AAA Deployment
 
 1. Clone the Repository
@@ -122,7 +156,7 @@ cd harvester-cloud
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on DigitalOcean, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
 Copy this example file and rename it to `terraform.tfvars`:
 
@@ -137,8 +171,8 @@ Example:
 ```console
 $ cat terraform.tfvars
 prefix                 = "hrv-gl-aaa"
-do_token               = "************"
-region                 = "fra1"
+project_id             = "************"
+region                 = "europe-west8"
 harvester_node_count   = 3
 harvester_cluster_size = "medium"
 rancher_api_url        = "https://demo-rancher-gl.<PUBLIC_IP>.sslip.io"
