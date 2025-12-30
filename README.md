@@ -148,7 +148,7 @@ The [official documentation](https://longhorn.io/docs/1.10.1/deploy/install/inst
 
 The [official documentation](https://documentation.suse.com/trd/minio/html/gs_rancher_minio/index.html#id-install-minio-from-suse-rancher-apps-marketplace) explains this process very well.
 
-**Remember to specify the creation of a new namespace, which for convenience can be called minio-operator.**
+**Remember to specify the creation of a new namespace, which for convenience can be called `minio-operator`.**
 
 9. Configure a MinIO object storage completely from the CLI
 
