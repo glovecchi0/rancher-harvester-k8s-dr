@@ -144,6 +144,66 @@ sh prepare-longhorn.sh
 
 The [official documentation](https://longhorn.io/docs/1.10.1/deploy/install/install-with-rancher/) explains this process very well.
 
+8. Install MinIO Operator from the UI
+
+The [official documentation](https://documentation.suse.com/trd/minio/html/gs_rancher_minio/index.html#id-install-minio-from-suse-rancher-apps-marketplace) explains this process very well.
+
+**Remember to specify the creation of a new namespace, which for convenience can be called minio-operator.**
+
+9. Configure a MinIO object storage completely from the CLI
+
+a. Install the MinIO Kubernetes plugin
+  - `kubectl krew install minio`
+    If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
+  - `kubectl minio version`
+
+b. Create the Tenant namespace
+  - `kubectl create namespace minio-tenant`
+
+c. Create a MinIO Tenant
+
+```bash
+kubectl minio tenant create minio \
+  --namespace minio-tenant \
+  --servers 1 \
+  --volumes 1 \
+  --capacity 50Gi \
+  --storage-class longhorn \
+  --disable-tls
+```
+
+d. Retrieve the credentials that are created
+
+```bash
+kubectl get secret minio-env-configuration -n minio-tenant \
+  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_USER | cut -d'"' -f2
+kubectl get secret minio-env-configuration -n minio-tenant \
+  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_PASSWORD | cut -d'"' -f2
+```
+
+e. Create the Bucket # AWS S3 Compatible Object Storage
+  - Install the MinIO Client # It is the equivalent of *aws s3* but designed specifically for MinIO
+  `brew install minio/stable/mc # Ref. https://github.com/minio/mc`
+  - Retrieve credentials from the MinIO secret
+
+```bash
+export MINIO_ROOT_USER=$(kubectl get secret minio-env-configuration -n minio-tenant \
+  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_USER | cut -d'"' -f2)
+export MINIO_ROOT_PASSWORD=$(kubectl get secret minio-env-configuration -n minio-tenant \
+  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_PASSWORD | cut -d'"' -f2)
+```
+
+  - Retrieve the MinIO service endpoint (NodePort or ClusterIP)
+  `export MINIO_ENDPOINT=$(kubectl get svc minio -n minio-tenant -o jsonpath="{.spec.clusterIP}")`
+  - Create the Bucket for Velero
+
+```bash
+mc --config-dir /tmp/.mc alias set minio http://$MINIO_ENDPOINT:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+mc --config-dir /tmp/.mc mb minio/velero-backups
+mc --config-dir /tmp/.mc ls minio
+rm -rf /tmp/.mc
+```
+
 ##### Harvester Cluster AAA Deployment
 
 1. Clone the Repository
