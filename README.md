@@ -163,9 +163,11 @@ kubectl minio tenant create minio \
   --namespace minio-tenant \
   --servers 1 \
   --volumes 1 \
-  --capacity 50Gi \
+  --capacity 10Gi \
   --storage-class longhorn \
   --disable-tls
+kubectl patch svc minio -n minio-tenant -p '{"spec":{"type":"NodePort"}}'
+kubectl patch svc minio-console -n minio-tenant -p '{"spec":{"type":"NodePort"}}'
 # Create the Bucket (AWS S3 Compatible Object Storage)
 ## Install the MinIO Client (It is the equivalent of aws s3 but designed specifically for MinIO)
 brew install minio/stable/mc # Ref. https://github.com/minio/mc
