@@ -152,18 +152,13 @@ The [official documentation](https://documentation.suse.com/trd/minio/html/gs_ra
 
 9. Configure a MinIO object storage completely from the CLI
 
-a. Install the MinIO Kubernetes plugin
-  - `kubectl krew install minio`
-
-    If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
-  - `kubectl minio version`
-
-b. Create the Tenant namespace
-  - `kubectl create namespace minio-tenant`
-
-c. Create a MinIO Tenant
-
 ```bash
+# Install the MinIO Kubernetes plugin
+kubectl krew install minio
+kubectl minio version
+# Create the Tenant namespace
+kubectl create namespace minio-tenant
+# Create a MinIO Tenant
 kubectl minio tenant create minio \
   --namespace minio-tenant \
   --servers 1 \
@@ -171,41 +166,24 @@ kubectl minio tenant create minio \
   --capacity 50Gi \
   --storage-class longhorn \
   --disable-tls
-```
-
-d. Retrieve the credentials that are created
-
-```bash
-kubectl get secret minio-env-configuration -n minio-tenant \
-  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_USER | cut -d'"' -f2
-kubectl get secret minio-env-configuration -n minio-tenant \
-  -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_PASSWORD | cut -d'"' -f2
-```
-
-e. Create the Bucket # AWS S3 Compatible Object Storage
-  - Install the MinIO Client # It is the equivalent of *aws s3* but designed specifically for MinIO
-
-  `brew install minio/stable/mc # Ref. https://github.com/minio/mc`
-  - Retrieve credentials from the MinIO secret
-
-```bash
+# Create the Bucket (AWS S3 Compatible Object Storage)
+## Install the MinIO Client (It is the equivalent of aws s3 but designed specifically for MinIO)
+brew install minio/stable/mc # Ref. https://github.com/minio/mc
+## Retrieve credentials from the MinIO secret
 export MINIO_ROOT_USER=$(kubectl get secret minio-env-configuration -n minio-tenant \
   -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_USER | cut -d'"' -f2)
 export MINIO_ROOT_PASSWORD=$(kubectl get secret minio-env-configuration -n minio-tenant \
   -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_PASSWORD | cut -d'"' -f2)
-```
-
-  - Retrieve the MinIO service endpoint (NodePort or ClusterIP)
-
-  `export MINIO_ENDPOINT=$(kubectl get svc minio -n minio-tenant -o jsonpath="{.spec.clusterIP}")`
-  - Create the Bucket for Velero
-
-```bash
+## Retrieve the MinIO service endpoint (NodePort or ClusterIP)
+export MINIO_ENDPOINT=$(kubectl get svc minio -n minio-tenant -o jsonpath="{.spec.clusterIP}")
+## Create the Bucket for Velero
 mc --config-dir /tmp/.mc alias set minio http://$MINIO_ENDPOINT:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
 mc --config-dir /tmp/.mc mb minio/velero-backups
 mc --config-dir /tmp/.mc ls minio
 rm -rf /tmp/.mc
 ```
+
+If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
 
 #### Harvester Cluster AAA Deployment
 
