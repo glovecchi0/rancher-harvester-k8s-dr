@@ -71,9 +71,9 @@ cd tf-rancher-up
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+  Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
-Copy this example file and rename it to `terraform.tfvars`:
+  Copy this example file and rename it to `terraform.tfvars`:
 
 ```bash
 cd recipes/upstream/google-cloud/rke2
@@ -81,7 +81,7 @@ cp terraform.tfvars.example terraform.tfvars
 vi terraform.tfvars
 ```
 
-Example:
+  Example:
 
 ```console
 $ cat terraform.tfvars
@@ -101,12 +101,12 @@ terraform init -upgrade && terraform apply -auto-approve
 
 4. Create an API Key
 
-To integrate Harvester clusters, you'll need to create an API key.
-The [official documentation](https://ranchermanager.docs.rancher.com/reference-guides/user-settings/api-keys#creating-an-api-key) explains this process very well.
+  To integrate Harvester clusters, you'll need to create an API key.
+  The [official documentation](https://ranchermanager.docs.rancher.com/reference-guides/user-settings/api-keys#creating-an-api-key) explains this process very well.
 
 5. Enable the Harvester UI Extension
 
-The [official documentation](https://docs.harvesterhci.io/v1.6/rancher/harvester-ui-extension) explains this process very well.
+  The [official documentation](https://docs.harvesterhci.io/v1.6/rancher/harvester-ui-extension) explains this process very well.
 
 6. Install Longhorn Requirements
 
@@ -142,13 +142,13 @@ sh prepare-longhorn.sh
 
 7. Install Longhorn from the UI
 
-The [official documentation](https://longhorn.io/docs/1.10.1/deploy/install/install-with-rancher/) explains this process very well.
+  The [official documentation](https://longhorn.io/docs/1.10.1/deploy/install/install-with-rancher/) explains this process very well.
 
 8. Install MinIO Operator from the UI
 
-The [official documentation](https://documentation.suse.com/trd/minio/html/gs_rancher_minio/index.html#id-install-minio-from-suse-rancher-apps-marketplace) explains this process very well.
+  The [official documentation](https://documentation.suse.com/trd/minio/html/gs_rancher_minio/index.html#id-install-minio-from-suse-rancher-apps-marketplace) explains this process very well.
 
-**Remember to specify the creation of a new namespace, which for convenience can be called minio-operator.**
+  **Remember to specify the creation of a new namespace, which for convenience can be called minio-operator.**
 
 9. Configure a MinIO object storage completely from the CLI
 
@@ -183,6 +183,7 @@ kubectl get secret minio-env-configuration -n minio-tenant \
 
 e. Create the Bucket # AWS S3 Compatible Object Storage
   - Install the MinIO Client # It is the equivalent of *aws s3* but designed specifically for MinIO
+
   `brew install minio/stable/mc # Ref. https://github.com/minio/mc`
   - Retrieve credentials from the MinIO secret
 
@@ -194,6 +195,7 @@ export MINIO_ROOT_PASSWORD=$(kubectl get secret minio-env-configuration -n minio
 ```
 
   - Retrieve the MinIO service endpoint (NodePort or ClusterIP)
+
   `export MINIO_ENDPOINT=$(kubectl get svc minio -n minio-tenant -o jsonpath="{.spec.clusterIP}")`
   - Create the Bucket for Velero
 
@@ -216,9 +218,9 @@ cd harvester-cloud
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+  Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
-Copy this example file and rename it to `terraform.tfvars`:
+  Copy this example file and rename it to `terraform.tfvars`:
 
 ```bash
 cd projects/google-cloud
@@ -226,7 +228,7 @@ cp terraform.tfvars.example terraform.tfvars
 vi terraform.tfvars
 ```
 
-Example:
+  Example:
 
 ```console
 $ cat terraform.tfvars
