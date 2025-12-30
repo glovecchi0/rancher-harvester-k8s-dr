@@ -59,7 +59,7 @@ Before starting the Disaster Recovery workflow, the following infrastructure com
 
 **If the infrastructure is not already prepared, it must be deployed before following this guide.**
 
-##### Rancher Deployment
+#### Rancher Deployment
 
 1. Clone the Repository
 
@@ -206,7 +206,7 @@ mc --config-dir /tmp/.mc ls minio
 rm -rf /tmp/.mc
 ```
 
-##### Harvester Cluster AAA Deployment
+#### Harvester Cluster AAA Deployment
 
 1. Clone the Repository
 
@@ -243,7 +243,7 @@ rancher_secret_key     = "************"
 rancher_insecure       = true
 ```
 
-##### Harvester Cluster BBB Deployment
+#### Harvester Cluster BBB Deployment
 
 It will follow the same path as the previous point.
 
