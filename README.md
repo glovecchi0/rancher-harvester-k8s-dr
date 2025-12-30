@@ -151,6 +151,7 @@ The [official documentation](https://documentation.suse.com/trd/minio/html/gs_ra
 **Remember to specify the creation of a new namespace, which for convenience can be called `minio-operator`.**
 
 9. Configure a MinIO object storage completely from the CLI
+
 a. Install the MinIO Kubernetes plugin
   - `kubectl krew install minio`
 
