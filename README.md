@@ -158,6 +158,38 @@ kubectl krew install minio
 kubectl minio version
 # Create the Tenant namespace
 kubectl create namespace minio-tenant
+# Apply NodePort Services for MinIO API and Console
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-nodeport
+  namespace: minio-tenant
+spec:
+  type: NodePort
+  selector:
+    v1.min.io/tenant: minio
+    v1.min.io/pool: ss-0
+  ports:
+    - port: 9000
+      targetPort: 9000
+      nodePort: 30090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-console-nodeport
+  namespace: minio-tenant
+spec:
+  type: NodePort
+  selector:
+    v1.min.io/tenant: minio
+    v1.min.io/console: minio-console
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30091
+EOF
 # Create a MinIO Tenant
 kubectl minio tenant create minio \
   --namespace minio-tenant \
@@ -166,8 +198,8 @@ kubectl minio tenant create minio \
   --capacity 10Gi \
   --storage-class longhorn \
   --disable-tls
-kubectl patch svc minio -n minio-tenant -p '{"spec":{"type":"NodePort"}}'
-kubectl patch svc minio-console -n minio-tenant -p '{"spec":{"type":"NodePort"}}'
+## Wait until the MinIO pod is Running and Ready 2/2
+while [[ $(kubectl -n minio-tenant get pod -l v1.min.io/tenant=minio -o jsonpath="{.items[0].status.containerStatuses[*].ready}") != "true true" ]]; do echo "Waiting for MinIO pod..."; sleep 5; done
 # Create the Bucket (AWS S3 Compatible Object Storage)
 ## Install the MinIO Client (It is the equivalent of aws s3 but designed specifically for MinIO)
 brew install minio/stable/mc # Ref. https://github.com/minio/mc
@@ -176,16 +208,41 @@ export MINIO_ROOT_USER=$(kubectl get secret minio-env-configuration -n minio-ten
   -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_USER | cut -d'"' -f2)
 export MINIO_ROOT_PASSWORD=$(kubectl get secret minio-env-configuration -n minio-tenant \
   -o jsonpath="{.data.config\.env}" | base64 --decode | grep MINIO_ROOT_PASSWORD | cut -d'"' -f2)
-## Retrieve the MinIO service endpoint (NodePort or ClusterIP)
-export MINIO_ENDPOINT=$(kubectl get svc minio -n minio-tenant -o jsonpath="{.spec.clusterIP}")
+## Retrieve the MinIO NodePort and node IP automatically
+export MINIO_NODE_PORT=$(kubectl get svc minio-nodeport -n minio-tenant -o jsonpath="{.spec.ports[0].nodePort}")
+export MINIO_NODE_NAME=$(kubectl -n minio-tenant get pod -l v1.min.io/tenant=minio -o jsonpath="{.items[0].spec.nodeName}")
+export MINIO_NODE_IP=$(kubectl get node $MINIO_NODE_NAME -o jsonpath="{.status.addresses[?(@.type=='ExternalIP')].address}")
 ## Create the Bucket for Velero
-mc --config-dir /tmp/.mc alias set minio http://$MINIO_ENDPOINT:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+mc --config-dir /tmp/.mc alias set minio http://$MINIO_NODE_IP:$MINIO_NODE_PORT $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
 mc --config-dir /tmp/.mc mb minio/velero-backups
 mc --config-dir /tmp/.mc ls minio
 rm -rf /tmp/.mc
 ```
 
 If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
+
+10. Install Velero from the CLI
+
+```bash
+# Install the Velero Client
+brew install velero
+# Install Velero
+velero install \
+  --provider aws \
+  --plugins velero/velero-plugin-for-aws:v1.13.1 \
+  --bucket velero-backups \
+  --secret-file <(echo "[default]
+aws_access_key_id=$MINIO_ROOT_USER
+aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
+  --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://$MINIO_NODE_IP:$MINIO_NODE_PORT \
+  --use-volume-snapshots=false
+```
+
+```console
+$ velero backup-location get
+NAME      PROVIDER   BUCKET/PREFIX    PHASE     LAST VALIDATED   ACCESS MODE   DEFAULT
+default   aws        velero-backups   Unknown   Unknown          ReadWrite     true
+```
 
 #### Harvester Cluster AAA Deployment
 
