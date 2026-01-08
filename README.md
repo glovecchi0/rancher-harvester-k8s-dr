@@ -85,12 +85,13 @@ Example:
 
 ```console
 $ cat terraform.tfvars
-prefix              = "demo-rancher-gl"
-project_id          = "************"
-region              = "europe-west8"
-instance_count      = 3
-rancher_hostname    = "demo-rancher-gl"
-rancher_password    = "************"
+prefix            = "demo-rancher-gl"
+project_id        = "************"
+region            = "europe-west8"
+instance_count    = 3
+instance_type     = "n2‑standard‑8"
+rancher_hostname  = "demo-rancher-gl"
+rancher_password  = "************"
 ```
 
 3. Terraform Deploy
@@ -117,10 +118,50 @@ cat <<'EOF' > prepare-longhorn.sh
 #!/usr/bin/env bash
 set -euo pipefail
 
-OS_TYPE=$(grep '^os_type' terraform.tfvars 2>/dev/null | head -1 | sed -E 's/.*=\s*"?([^"]+)"?/\1/' | tr -d ' "' || awk '/variable "os_type"/ {f=1} f && /default/ {gsub(/[" ]/,"",$3); print $3; exit}' variables.tf)
-PREFIX=$(grep '^prefix' terraform.tfvars 2>/dev/null | head -1 | sed -E 's/.*=\s*"?([^"]+)"?/\1/' | tr -d ' "' || awk '/variable "prefix"/ {f=1} f && /default/ {gsub(/[" ]/,"",$3); print $3; exit}' variables.tf)
+OS_TYPE=$(grep -E '^\s*os_type\s*=' terraform.tfvars 2>/dev/null \
+  | head -1 \
+  | cut -d= -f2- \
+  | tr -d ' "')
 
-SSH_USER=$([[ "$OS_TYPE" == "sles" ]] && echo sles || echo ubuntu)
+if [[ -z "$OS_TYPE" ]]; then
+  OS_TYPE=$(awk '
+    /variable "os_type"/ {found=1}
+    found && /default/ {
+      gsub(/[" ]/,"",$3)
+      print $3
+      exit
+    }
+  ' variables.tf)
+fi
+
+PREFIX=$(grep -E '^\s*prefix\s*=' terraform.tfvars 2>/dev/null \
+  | head -1 \
+  | cut -d= -f2- \
+  | tr -d ' "')
+
+if [[ -z "$PREFIX" ]]; then
+  PREFIX=$(awk '
+    /variable "prefix"/ {found=1}
+    found && /default/ {
+      gsub(/[" ]/,"",$3)
+      print $3
+      exit
+    }
+  ' variables.tf)
+fi
+
+case "$OS_TYPE" in
+  sles)
+    SSH_USER="sles"
+    ;;
+  opensuse)
+    SSH_USER="opensuse"
+    ;;
+  *)
+    SSH_USER="ubuntu"
+    ;;
+esac
+
 SSH_KEY="${PREFIX}-ssh_private_key.pem"
 
 for IP in $(terraform output instances_public_ip | tr -d '[]" ,' | tr '\n' ' '); do
