@@ -116,7 +116,6 @@ The [official documentation](https://docs.harvesterhci.io/v1.6/rancher/harvester
 # recipes/upstream/google-cloud/rke2
 cat <<'EOF' > prepare-longhorn.sh
 #!/usr/bin/env bash
-set -euo pipefail
 
 OS_TYPE=$(grep -E '^\s*os_type\s*=' terraform.tfvars 2>/dev/null \
   | head -1 \
