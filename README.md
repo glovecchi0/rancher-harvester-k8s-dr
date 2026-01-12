@@ -71,12 +71,12 @@ cd tf-rancher-up
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+Assuming the lab will be based on Microsoft Azure, before running the Terraform code to deploy Rancher, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
 Copy this example file and rename it to `terraform.tfvars`:
 
 ```bash
-cd recipes/upstream/google-cloud/rke2
+cd recipes/upstream/azure/rke2
 cp terraform.tfvars.example terraform.tfvars
 vi terraform.tfvars
 ```
@@ -85,13 +85,13 @@ Example:
 
 ```console
 $ cat terraform.tfvars
-prefix            = "demo-rancher-gl"
-project_id        = "************"
-region            = "europe-west8"
-instance_count    = 3
-instance_type     = "n2‑standard‑8"
-rancher_hostname  = "demo-rancher-gl"
-rancher_password  = "************"
+prefix           = "demo-rancher-gl"
+subscription_id  = "************"
+region           = "italynorth"
+instance_count   = 3
+instance_type    = "Standard_D8_v5"
+rancher_hostname = "demo-rancher-gl"
+rancher_password = "************"
 ```
 
 3. Terraform Deploy
@@ -113,7 +113,7 @@ The [official documentation](https://docs.harvesterhci.io/v1.6/rancher/harvester
 
 ```bash
 # Make sure you are in the path where the Terraform code used to deploy Rancher is located
-# recipes/upstream/google-cloud/rke2
+# recipes/upstream/azure/rke2
 cat <<'EOF' > prepare-longhorn.sh
 #!/usr/bin/env bash
 
@@ -296,12 +296,12 @@ cd harvester-cloud
 
 2. Configure the `variables` File
 
-Assuming the lab will be based on Google Cloud, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
+Assuming the lab will be based on Microsoft Azure, before running the Terraform code to deploy Harvester, you'll need to configure the environment-specific variables. You'll find the `terraform.tfvars.example` file in the recipe's root directory.
 
 Copy this example file and rename it to `terraform.tfvars`:
 
 ```bash
-cd projects/google-cloud
+cd projects/azure
 cp terraform.tfvars.example terraform.tfvars
 vi terraform.tfvars
 ```
@@ -310,15 +310,74 @@ Example:
 
 ```console
 $ cat terraform.tfvars
-prefix                 = "hrv-gl-aaa"
-project_id             = "************"
-region                 = "europe-west8"
-harvester_node_count   = 3
-harvester_cluster_size = "medium"
-rancher_api_url        = "https://demo-rancher-gl.<PUBLIC_IP>.sslip.io"
-rancher_access_key     = "************"
-rancher_secret_key     = "************"
-rancher_insecure       = true
+prefix               = "hrv-gl-aaa"
+subscription_id      = "************"
+spot_instance        = false
+region               = "italynorth"
+harvester_node_count = 3
+rancher_api_url      = "https://demo-rancher-gl.<PUBLIC_IP>.sslip.io"
+rancher_access_key   = "************"
+rancher_secret_key   = "************"
+rancher_insecure     = true
+```
+
+3. Terraform Deploy
+
+```bash
+terraform init -upgrade && terraform apply -auto-approve
+```
+
+4. Upload an OS image that will then be used with VM deployments
+
+```console
+$ pwd
+~/harvester-cloud/projects/azure
+```
+
+```bash
+cd ../harvester-ops/image-creation/
+vi terraform.tfvars
+```
+
+Example:
+
+```console
+$ cat terraform.tfvars
+harvester_url        = "https://hrv-gl-aaa.<PUBLIC_IP>.sslip.io"
+kubeconfig_file_path = "../../azure/"
+kubeconfig_file_name = "hrv-gl-aaa_kube_config.yml"
+```
+
+```bash
+terraform init -upgrade && terraform apply -auto-approve
+```
+
+5. Create a VM Network
+
+```console
+$ pwd
+~/harvester-cloud/projects/harvester-ops/image-creation
+```
+
+```bash
+cd ../network-creation/
+vi terraform.tfvars
+```
+
+Example:
+
+```console
+$ cat terraform.tfvars
+harvester_url             = "https://hrv-gl-aaa.<PUBLIC_IP>.sslip.io"
+kubeconfig_file_path      = "../../azure/"
+kubeconfig_file_name      = "hrv-gl-aaa_kube_config.yml"
+private_ssh_key_file_path = "../../azure/"
+private_ssh_key_file_name = "hrv-gl-aaa-ssh_private_key.pem"
+cluster_network_count     = 3
+```
+
+```bash
+terraform init -upgrade && terraform apply -auto-approve
 ```
 
 #### Harvester Cluster BBB Deployment
@@ -334,4 +393,38 @@ The following sections describe the configuration required to enable cross-clust
 
 ## DR Workflow Setup Instructions
 
-### 
+### Creating the RKE2 AAA Cluster on Harvester AAA from UI
+
+The [official documentation](https://docs.harvesterhci.io/v1.7/rancher/node/rke2-cluster/) explains this process very well.
+
+**Remember to click on `Show Advanced` and change the parameters in `User Data:` with:**
+
+```console
+#cloud-config
+package_update: true
+
+packages:
+  - qemu-guest-agent
+
+users:
+  - name: opensuse
+    gecos: opensuse User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    lock_passwd: false
+
+chpasswd:
+  list: |
+    opensuse:opensuse
+  expire: false
+
+runcmd:
+  - systemctl enable --now qemu-guest-agent.service
+  - sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+  - sed -i 's@Include /etc/ssh/sshd_config.d/\*.conf@#Include /etc/ssh/sshd_config.d/*.conf@g' /etc/ssh/sshd_config
+  - systemctl restart ssh
+```
+
+### Install Velero from the RKE2 AAA Cluster CLI
+
+
