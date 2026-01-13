@@ -408,14 +408,14 @@ runcmd:
   - systemctl restart ssh
 ```
 
-![](../images/RKE2_AAA_CONFIG_1.png)
-![](../images/RKE2_AAA_CONFIG_2.png)
+![](./images/RKE2_AAA_CONFIG_1.png)
+![](./images/RKE2_AAA_CONFIG_2.png)
 
 ### Install Velero from the RKE2 AAA Kubectl Shell
 
 After a few minutes...
 
-![](../images/RKE2_AAA_CONFIG_3.png)
+![](./images/RKE2_AAA_CONFIG_3.png)
 
 **Remember to retrieve the `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_NODE_PORT`, `MINIO_NODE_NAME` and `MINIO_NODE_IP` environment variables from the Rancher Cluster (take a look above, where the installation of MinIO is described).**
 
