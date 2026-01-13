@@ -261,23 +261,6 @@ rm -rf /tmp/.mc
 
 If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
 
-10. Install Velero from the CLI
-
-```bash
-# Install the Velero Client
-brew install velero
-# Install Velero
-velero install \
-  --provider aws \
-  --plugins velero/velero-plugin-for-aws:v1.13.1 \
-  --bucket velero-backups \
-  --secret-file <(echo "[default]
-aws_access_key_id=$MINIO_ROOT_USER
-aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
-  --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://$MINIO_NODE_IP:$MINIO_NODE_PORT \
-  --use-volume-snapshots=false
-```
-
 ```console
 $ velero backup-location get
 NAME      PROVIDER   BUCKET/PREFIX    PHASE     LAST VALIDATED   ACCESS MODE   DEFAULT
@@ -425,6 +408,43 @@ runcmd:
   - systemctl restart ssh
 ```
 
-### Install Velero from the RKE2 AAA Cluster CLI
+![](../images/RKE2_AAA_CONFIG_1.png)
+![](../images/RKE2_AAA_CONFIG_2.png)
 
+### Install Velero from the RKE2 AAA Kubectl Shell
 
+After a few minutes...
+
+![](../images/RKE2_AAA_CONFIG_3.png)
+
+**Remember to retrieve the `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_NODE_PORT`, `MINIO_NODE_NAME` and `MINIO_NODE_IP` environment variables from the Rancher Cluster (take a look above, where the installation of MinIO is described).**
+
+```bash
+# Export the variables needed for login to MinIO
+export MINIO_ROOT_USER=<YOUR_MINIO_ROOT_USER>
+export MINIO_ROOT_PASSWORD=<YOUR_MINIO_ROOT_PASSWORD>
+export MINIO_NODE_PORT=<YOUR_MINIO_NODE_PORT>
+export MINIO_NODE_NAME=<YOUR_MINIO_NODE_NAME>
+export MINIO_NODE_IP=<YOUR_MINIO_NODE_IP>
+# Install the Velero Client
+export VELERO_VERSION=v1.17.1
+curl -LO https://github.com/vmware-tanzu/velero/releases/download/${VELERO_VERSION}/velero-${VELERO_VERSION}-linux-amd64.tar.gz
+tar -xvf velero-${VELERO_VERSION}-linux-amd64.tar.gz
+sudo mv velero-${VELERO_VERSION}-linux-amd64/velero /usr/local/bin/
+velero version
+velero install \
+  --provider aws \
+  --plugins velero/velero-plugin-for-aws:v1.13.1 \
+  --bucket velero-backups \
+  --secret-file <(echo "[default]
+aws_access_key_id=$MINIO_ROOT_USER
+aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
+  --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://$MINIO_NODE_IP:$MINIO_NODE_PORT \
+  --use-volume-snapshots=false
+```
+
+```console
+$ velero backup-location get
+NAME      PROVIDER   BUCKET/PREFIX    PHASE     LAST VALIDATED   ACCESS MODE   DEFAULT
+default   aws        velero-backups   Unknown   Unknown          ReadWrite     true
+```
