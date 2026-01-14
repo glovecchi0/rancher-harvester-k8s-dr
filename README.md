@@ -196,8 +196,15 @@ The [official documentation](https://documentation.suse.com/trd/minio/html/gs_ra
 # Install the MinIO Kubernetes plugin
 kubectl krew install minio
 kubectl minio version
+```
+
+```bash
+export KUBECONFIG=demo-rancher-gl_kube_config.yml # <PREFIX>__kube_config.yml
 # Create the Tenant namespace
 kubectl create namespace minio-tenant
+```
+
+```bash
 # Apply NodePort Services for MinIO API and Console
 cat <<EOF | kubectl apply -f -
 apiVersion: v1
@@ -230,6 +237,9 @@ spec:
       targetPort: 9090
       nodePort: 30091
 EOF
+```
+
+```bash
 # Create a MinIO Tenant
 kubectl minio tenant create minio \
   --namespace minio-tenant \
@@ -240,6 +250,9 @@ kubectl minio tenant create minio \
   --disable-tls
 ## Wait until the MinIO pod is Running and Ready 2/2
 while [[ $(kubectl -n minio-tenant get pod -l v1.min.io/tenant=minio -o jsonpath="{.items[0].status.containerStatuses[*].ready}") != "true true" ]]; do echo "Waiting for MinIO pod..."; sleep 5; done
+```
+
+```bash
 # Create the Bucket (AWS S3 Compatible Object Storage)
 ## Install the MinIO Client (It is the equivalent of aws s3 but designed specifically for MinIO)
 brew install minio/stable/mc # Ref. https://github.com/minio/mc
