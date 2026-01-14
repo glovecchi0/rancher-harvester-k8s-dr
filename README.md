@@ -274,12 +274,6 @@ rm -rf /tmp/.mc
 
 If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
 
-```console
-$ velero backup-location get
-NAME      PROVIDER   BUCKET/PREFIX    PHASE     LAST VALIDATED   ACCESS MODE   DEFAULT
-default   aws        velero-backups   Unknown   Unknown          ReadWrite     true
-```
-
 #### Harvester Cluster AAA Deployment
 
 1. Clone the Repository
@@ -389,7 +383,7 @@ The following sections describe the configuration required to enable cross-clust
 
 ## DR Workflow Setup Instructions
 
-### Creating the RKE2 AAA Cluster on Harvester AAA from UI
+### Create the RKE2 AAA Cluster on Harvester AAA from UI
 
 The [official documentation](https://docs.harvesterhci.io/v1.7/rancher/node/rke2-cluster/) explains this process very well.
 
@@ -421,30 +415,92 @@ runcmd:
   - systemctl restart ssh
 ```
 
+**It is recommended to change the CNI from Calico to Cilium to avoid encountering errors regarding IP addressing.**
+
 ![](./images/RKE2_AAA_CONFIG_1.png)
 ![](./images/RKE2_AAA_CONFIG_2.png)
 
-### Install Velero from the RKE2 AAA Kubectl Shell
+### Install Velero from the RKE2 AAA CLI
 
 After a few minutes...
 
 ![](./images/RKE2_AAA_CONFIG_3.png)
 
+```bash
+# Return to the Harvester Cloud project. From the last commands you ran, you should be in the path ~/harvester-cloud/projects/harvester-ops/network-creation
+cd ../../azure/
+# Connect to the Harvester Cluster
+export KUBECONFIG=./hrv-gl-aaa_kube_config.yml
+```
+
+```console
+# Connect to a VM in the RKE2 Cluster
+$ kubectl get vmi -A
+NAMESPACE   NAME                         AGE   PHASE     IP                NODENAME       READY
+default     rke2-aaa-pool1-bgfbr-82v5m   27m   Running   192.168.123.186   hrv-gl-aaa-2   True
+$ virtctl ssh --local-ssh=true opensuse@vmi/rke2-aaa-pool1-bgfbr-82v5m.default
+The authenticity of host 'vmi/rke2-aaa-pool1-bgfbr-82v5m.default (<no hostip for proxy command>)' can't be established.
+ED25519 key fingerprint is SHA256:fsPfS38iAQJsI5sJExka4dEtGG7VUZ0ag4idxdAOCOk.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'vmi/rke2-aaa-pool1-bgfbr-82v5m.default' (ED25519) to the list of known hosts.
+(opensuse@vmi/rke2-aaa-pool1-bgfbr-82v5m.default) Password: 
+Have a lot of fun...
+opensuse@rke2-aaa-pool1-bgfbr-82v5m:~> sudo su -
+rke2-aaa-pool1-bgfbr-82v5m:~ # 
+```
+
 **Remember to retrieve the `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_NODE_PORT`, `MINIO_NODE_NAME` and `MINIO_NODE_IP` environment variables from the Rancher Cluster (take a look above, where the installation of MinIO is described).**
 
-```bash
+```console
 # Export the variables needed for login to MinIO
-export MINIO_ROOT_USER=<YOUR_MINIO_ROOT_USER>
-export MINIO_ROOT_PASSWORD=<YOUR_MINIO_ROOT_PASSWORD>
-export MINIO_NODE_PORT=<YOUR_MINIO_NODE_PORT>
-export MINIO_NODE_NAME=<YOUR_MINIO_NODE_NAME>
-export MINIO_NODE_IP=<YOUR_MINIO_NODE_IP>
+rke2-aaa-pool1-bgfbr-82v5m:~ # export MINIO_ROOT_USER=R07N5STVMZK4HJ6HOB9F
+rke2-aaa-pool1-bgfbr-82v5m:~ # export MINIO_ROOT_PASSWORD=cFg9kVAbwulpOEkiJoMfXsMRDMSzH6oNrWkpVAQK
+rke2-aaa-pool1-bgfbr-82v5m:~ # export MINIO_NODE_PORT=30090
+rke2-aaa-pool1-bgfbr-82v5m:~ # export MINIO_NODE_NAME=demo-rancher-gl-vm-3
+rke2-aaa-pool1-bgfbr-82v5m:~ # export MINIO_NODE_IP=172.213.211.81
 # Install the Velero Client
-export VELERO_VERSION=v1.17.1
-curl -LO https://github.com/vmware-tanzu/velero/releases/download/${VELERO_VERSION}/velero-${VELERO_VERSION}-linux-amd64.tar.gz
-tar -xvf velero-${VELERO_VERSION}-linux-amd64.tar.gz
-sudo mv velero-${VELERO_VERSION}-linux-amd64/velero /usr/local/bin/
-velero version
+rke2-aaa-pool1-bgfbr-82v5m:~ # export VELERO_VERSION=v1.17.1
+rke2-aaa-pool1-bgfbr-82v5m:~ # curl -LO https://github.com/vmware-tanzu/velero/releases/download/${VELERO_VERSION}/velero-${VELERO_VERSION}-linux-amd64.tar.gz
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 55.7M  100 55.7M    0     0  13.1M      0  0:00:04  0:00:04 --:--:-- 7986k
+rke2-aaa-pool1-bgfbr-82v5m:~ # tar -xvf velero-${VELERO_VERSION}-linux-amd64.tar.gz
+velero-v1.17.1-linux-amd64/LICENSE
+velero-v1.17.1-linux-amd64/examples/minio/00-minio-deployment.yaml
+velero-v1.17.1-linux-amd64/examples/nginx-app/README.md
+velero-v1.17.1-linux-amd64/examples/nginx-app/base.yaml
+velero-v1.17.1-linux-amd64/examples/nginx-app/with-pv.yaml
+velero-v1.17.1-linux-amd64/velero
+rke2-aaa-pool1-bgfbr-82v5m:~ # sudo mv velero-${VELERO_VERSION}-linux-amd64/velero /usr/local/bin/
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero version
+An error occurred: error finding Kubernetes API server config in --kubeconfig, $KUBECONFIG, or in-cluster configuration: invalid configuration: no configuration has been provided, try setting KUBERNETES_MASTER environment variable
+rke2-aaa-pool1-bgfbr-82v5m:~ # export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero version
+Client:
+	Version: v1.17.1
+	Git commit: 94f64639cee09c5caaa65b65ab5f42175f41c101
+<error getting server version: unable to retrieve the complete list of server APIs: velero.io/v1: no matches for velero.io/v1, Resource=>
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero install \
+>   --provider aws \
+>   --plugins velero/velero-plugin-for-aws:v1.13.1 \
+>   --bucket velero-backups \
+>   --secret-file <(echo "[default]
+> aws_access_key_id=$MINIO_ROOT_USER
+> aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
+>   --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://$MINIO_NODE_IP:$MINIO_NODE_PORT \
+>   --use-volume-snapshots=false
+...
+...
+...
+Deployment/velero: created
+Velero is installed! ⛵ Use 'kubectl logs deployment/velero -n velero' to view the status.
+rke2-aaa-pool1-bgfbr-82v5m:~ #
+```
+
+```bash
+# For convenient copy and paste
 velero install \
   --provider aws \
   --plugins velero/velero-plugin-for-aws:v1.13.1 \
@@ -457,7 +513,120 @@ aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
 ```
 
 ```console
-$ velero backup-location get
-NAME      PROVIDER   BUCKET/PREFIX    PHASE     LAST VALIDATED   ACCESS MODE   DEFAULT
-default   aws        velero-backups   Unknown   Unknown          ReadWrite     true
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero backup-location get default
+NAME      PROVIDER   BUCKET/PREFIX    PHASE       LAST VALIDATED                  ACCESS MODE   DEFAULT
+default   aws        velero-backups   Available   2026-01-14 15:53:38 +0000 UTC   ReadWrite     true
+rke2-aaa-pool1-bgfbr-82v5m:~ # 
 ```
+
+### Install a sample app on the RKE2 AAA Cluster to simulate a backup
+
+```bash
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+kubectl create ns demo
+kubectl -n demo create deployment nginx-demo --image=nginx:stable
+kubectl -n demo expose deployment nginx-demo --type=NodePort --port=80
+```
+
+### Create a Velero backup of the demo namespace created in the previous step
+
+```console
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero backup create backup-default --include-namespaces demo --wait
+Backup request "backup-default" submitted successfully.
+Waiting for backup to complete. You may safely press ctrl-c to stop waiting - your backup will continue in the background.
+.
+Backup completed with status: Completed. You may check for more information using the commands `velero backup describe backup-default` and `velero backup logs backup-default`.
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero backup get
+NAME             STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+backup-default   Completed   0        0          2026-01-14 15:54:38 +0000 UTC   29d       default            <none>
+rke2-aaa-pool1-bgfbr-82v5m:~ #
+```
+
+### Delete everything from the demo namespace and try a restore on the RKE2 AAA Cluster itself
+
+```console
+rke2-aaa-pool1-bgfbr-82v5m:~ # kubectl delete all --all -n demo
+pod "nginx-demo-bf7c6d495-8rg2f" deleted from demo namespace
+service "nginx-demo" deleted from demo namespace
+deployment.apps "nginx-demo" deleted from demo namespace
+replicaset.apps "nginx-demo-bf7c6d495" deleted from demo namespace
+rke2-aaa-pool1-bgfbr-82v5m:~ # kubectl -n demo get pods
+No resources found in demo namespace.
+rke2-aaa-pool1-bgfbr-82v5m:~ #
+```
+
+```console
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero restore create restore-demo --from-backup backup-default
+Restore request "restore-demo" submitted successfully.
+Run `velero restore describe restore-demo` or `velero restore logs restore-demo` for more details.
+rke2-aaa-pool1-bgfbr-82v5m:~ # velero restore describe restore-demo
+Name:         restore-demo
+Namespace:    velero
+Labels:       <none>
+Annotations:  <none>
+
+Phase:                       Completed
+Total items to be restored:  10
+Items restored:              10
+
+Started:    2026-01-14 15:59:38 +0000 UTC
+Completed:  2026-01-14 15:59:40 +0000 UTC
+
+Warnings:
+  Velero:     <none>
+  Cluster:  could not restore, CustomResourceDefinition:ciliumendpoints.cilium.io already exists. Warning: the in-cluster version is different than the backed-up version
+  Namespaces: <none>
+
+Backup:  backup-default
+
+Namespaces:
+  Included:  all namespaces found in the backup
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        nodes, events, events.events.k8s.io, backups.velero.io, restores.velero.io, resticrepositories.velero.io, csinodes.storage.k8s.io, volumeattachments.storage.k8s.io, backuprepositories.velero.io
+  Cluster-scoped:  auto
+
+Namespace mappings:  <none>
+
+Label selector:  <none>
+
+Or label selector:  <none>
+
+Restore PVs:  auto
+
+CSI Snapshot Restores: <none included>
+
+Existing Resource Policy:   <none>
+ItemOperationTimeout:       4h0m0s
+
+Preserve Service NodePorts:  auto
+
+Uploader config:
+
+
+HooksAttempted:   0
+HooksFailed:      0
+rke2-aaa-pool1-bgfbr-82v5m:~ # kubectl -n demo get pods,svc
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/nginx-demo-bf7c6d495-8rg2f   1/1     Running   0          65s
+
+NAME                 TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+service/nginx-demo   NodePort   10.43.192.31   <none>        80:31375/TCP   64s
+rke2-aaa-pool1-bgfbr-82v5m:~ #
+```
+
+### Create the RKE2 BBB Cluster on Harvester BBB from UI
+
+Follow the procedure above.
+
+### Install Velero from the RKE2 BBB CLI
+
+Follow the procedure above.
+
+### Restore the demo namespace and all its contents to the new RKE2 BBB Cluster, simulating a DR scenario
+
+
