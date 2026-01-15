@@ -272,6 +272,21 @@ mc --config-dir /tmp/.mc ls minio
 rm -rf /tmp/.mc
 ```
 
+Example:
+
+```console
+$ mc --config-dir /tmp/.mc alias set minio http://$MINIO_NODE_IP:$MINIO_NODE_PORT $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
+mc: Configuration written to `/tmp/.mc/config.json`. Please update your access credentials.
+mc: Successfully created `/tmp/.mc/share`.
+mc: Initialized share uploads `/tmp/.mc/share/uploads.json` file.
+mc: Initialized share downloads `/tmp/.mc/share/downloads.json` file.
+Added `minio` successfully.
+$ mc --config-dir /tmp/.mc mb minio/velero-backups
+Bucket created successfully `minio/velero-backups`.
+$ mc --config-dir /tmp/.mc ls minio
+[2026-01-15 10:29:54 CET]     0B velero-backups/
+```
+
 If you're new to *krew*, the plugin manager for *kubectl*, follow [these](https://krew.sigs.k8s.io/docs/user-guide/setup/install/) steps to install it.
 
 #### Harvester Cluster AAA Deployment
@@ -629,4 +644,170 @@ Follow the procedure above.
 
 ### Restore the demo namespace and all its contents to the new RKE2 BBB Cluster, simulating a DR scenario
 
+Complete environment result:
 
+![](./images/COMPLETE_ENVIRONMENT_1.png)
+![](./images/COMPLETE_ENVIRONMENT_2.png)
+
+```console
+# In the path where the code for the deployment of the Harvester BBB Cluster is located (example: ~/hrv-gl-bbb/harvester-cloud/projects/azure)
+$ export KUBECONFIG=hrv-gl-bbb_kube_config.yml
+$ kubectl get vmi -A
+NAMESPACE   NAME                         AGE   PHASE     IP                NODENAME       READY
+default     rke2-bbb-pool1-xc5q8-j55dw   15m   Running   192.168.123.128   hrv-gl-bbb-2   True
+$ virtctl ssh --local-ssh=true opensuse@vmi/rke2-bbb-pool1-xc5q8-j55dw.default
+The authenticity of host 'vmi/rke2-bbb-pool1-xc5q8-j55dw.default (<no hostip for proxy command>)' can't be established.
+ED25519 key fingerprint is SHA256:yuKUntKr0EKCrDHahYj9X1YLX8A5QdgvXijG/5dfKqo.
+This key is not known by any other names.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added 'vmi/rke2-bbb-pool1-xc5q8-j55dw.default' (ED25519) to the list of known hosts.
+(opensuse@vmi/rke2-bbb-pool1-xc5q8-j55dw.default) Password: 
+Have a lot of fun...
+opensuse@rke2-bbb-pool1-xc5q8-j55dw:~> sudo su -
+rke2-bbb-pool1-xc5q8-j55dw:~ # 
+```
+
+```console
+# Export the variables needed for login to MinIO
+rke2-bbb-pool1-xc5q8-j55dw:~ # export MINIO_ROOT_USER=NLV41D8JD3DRWW941PPS
+rke2-bbb-pool1-xc5q8-j55dw:~ # export MINIO_ROOT_PASSWORD=OgOD0BYPIKhOhb8xXoAQNc6IqWQTzruJdeLurIW0
+rke2-bbb-pool1-xc5q8-j55dw:~ # export MINIO_NODE_PORT=30090
+rke2-bbb-pool1-xc5q8-j55dw:~ # export MINIO_NODE_NAME=demo-rancher-gl-vm-3
+rke2-bbb-pool1-xc5q8-j55dw:~ # export MINIO_NODE_IP=4.232.188.13
+# Install the Velero Client
+rke2-bbb-pool1-xc5q8-j55dw:~ # export VELERO_VERSION=v1.17.1
+rke2-bbb-pool1-xc5q8-j55dw:~ # curl -LO https://github.com/vmware-tanzu/velero/releases/download/${VELERO_VERSION}/velero-${VELERO_VERSION}-linux-amd64.tar.gz
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 55.7M  100 55.7M    0     0  75.8M      0 --:--:-- --:--:-- --:--:-- 94.8M
+rke2-bbb-pool1-xc5q8-j55dw:~ # tar -xvf velero-${VELERO_VERSION}-linux-amd64.tar.gz
+velero-v1.17.1-linux-amd64/LICENSE
+velero-v1.17.1-linux-amd64/examples/minio/00-minio-deployment.yaml
+velero-v1.17.1-linux-amd64/examples/nginx-app/README.md
+velero-v1.17.1-linux-amd64/examples/nginx-app/base.yaml
+velero-v1.17.1-linux-amd64/examples/nginx-app/with-pv.yaml
+velero-v1.17.1-linux-amd64/velero
+rke2-bbb-pool1-xc5q8-j55dw:~ # sudo mv velero-${VELERO_VERSION}-linux-amd64/velero /usr/local/bin/
+rke2-bbb-pool1-xc5q8-j55dw:~ # export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+rke2-bbb-pool1-xc5q8-j55dw:~ # velero version
+Client:
+	Version: v1.17.1
+	Git commit: 94f64639cee09c5caaa65b65ab5f42175f41c101
+<error getting server version: unable to retrieve the complete list of server APIs: velero.io/v1: no matches for velero.io/v1, Resource=>
+rke2-bbb-pool1-xc5q8-j55dw:~ # velero install \
+>   --provider aws \
+>   --plugins velero/velero-plugin-for-aws:v1.13.1 \
+>   --bucket velero-backups \
+>   --secret-file <(echo "[default]
+> aws_access_key_id=$MINIO_ROOT_USER
+> aws_secret_access_key=$MINIO_ROOT_PASSWORD") \
+>   --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://$MINIO_NODE_IP:$MINIO_NODE_PORT \
+>   --use-volume-snapshots=false
+...
+...
+...
+Deployment/velero: created
+Velero is installed! ⛵ Use 'kubectl logs deployment/velero -n velero' to view the status.
+rke2-bbb-pool1-xc5q8-j55dw:~ #
+```
+
+```console
+rke2-bbb-pool1-xc5q8-j55dw:~ # velero backup-location get default
+NAME      PROVIDER   BUCKET/PREFIX    PHASE       LAST VALIDATED                  ACCESS MODE   DEFAULT
+default   aws        velero-backups   Available   2026-01-15 15:03:54 +0000 UTC   ReadWrite     true
+rke2-bbb-pool1-xc5q8-j55dw:~ # 
+```
+
+```console
+rke2-bbb-pool1-xc5q8-j55dw:~ # curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   138  100   138    0     0    755      0 --:--:-- --:--:-- --:--:--   758
+
+100 55.8M  100 55.8M    0     0   112M      0 --:--:-- --:--:-- --:--:--  112M
+rke2-bbb-pool1-xc5q8-j55dw:~ # chmod +x kubectl
+rke2-bbb-pool1-xc5q8-j55dw:~ # sudo mv kubectl /usr/local/bin/
+rke2-bbb-pool1-xc5q8-j55dw:~ # kubectl get ns
+NAME                          STATUS   AGE
+cattle-fleet-system           Active   15m
+cattle-impersonation-system   Active   16m
+cattle-local-user-passwords   Active   16m
+cattle-system                 Active   19m
+cilium-secrets                Active   19m
+default                       Active   19m
+kube-node-lease               Active   19m
+kube-public                   Active   19m
+kube-system                   Active   19m
+local                         Active   16m
+velero                        Active   4m3s
+rke2-bbb-pool1-xc5q8-j55dw:~ # kubectl get pods -A | grep -i nginx-demo
+rke2-bbb-pool1-xc5q8-j55dw:~ #
+```
+
+```console
+# Create the demo namespace and sample app by restoring the backup made on the RKE2 AAA Cluster (running on the Harvester AAA Cluster)
+rke2-bbb-pool1-xc5q8-j55dw:~ # velero restore create restore-demo --from-backup backup-default
+Restore request "restore-demo" submitted successfully.
+Run `velero restore describe restore-demo` or `velero restore logs restore-demo` for more details.
+rke2-bbb-pool1-xc5q8-j55dw:~ # velero restore describe restore-demo
+Name:         restore-demo
+Namespace:    velero
+Labels:       <none>
+Annotations:  <none>
+
+Phase:                       Completed
+Total items to be restored:  11
+Items restored:              11
+
+Started:    2026-01-15 15:10:22 +0000 UTC
+Completed:  2026-01-15 15:10:27 +0000 UTC
+
+Warnings:
+  Velero:     <none>
+  Cluster:  could not restore, CustomResourceDefinition:ciliumendpoints.cilium.io already exists. Warning: the in-cluster version is different than the backed-up version
+  Namespaces:
+    demo:  could not restore, ConfigMap:kube-root-ca.crt already exists. Warning: the in-cluster version is different than the backed-up version
+           could not restore, CiliumEndpoint:nginx-demo-bf7c6d495-cc5zr already exists. Warning: the in-cluster version is different than the backed-up version
+
+Backup:  backup-default
+
+Namespaces:
+  Included:  all namespaces found in the backup
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        nodes, events, events.events.k8s.io, backups.velero.io, restores.velero.io, resticrepositories.velero.io, csinodes.storage.k8s.io, volumeattachments.storage.k8s.io, backuprepositories.velero.io
+  Cluster-scoped:  auto
+
+Namespace mappings:  <none>
+
+Label selector:  <none>
+
+Or label selector:  <none>
+
+Restore PVs:  auto
+
+CSI Snapshot Restores: <none included>
+
+Existing Resource Policy:   <none>
+ItemOperationTimeout:       4h0m0s
+
+Preserve Service NodePorts:  auto
+
+Uploader config:
+
+
+HooksAttempted:   0
+HooksFailed:      0
+rke2-bbb-pool1-xc5q8-j55dw:~ # kubectl get ns | grep -i demo
+demo                          Active   65s
+rke2-bbb-pool1-xc5q8-j55dw:~ # kubectl -n demo get pods,svc
+NAME                             READY   STATUS    RESTARTS   AGE
+pod/nginx-demo-bf7c6d495-cc5zr   1/1     Running   0          73s
+
+NAME                 TYPE       CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+service/nginx-demo   NodePort   10.43.49.28   <none>        80:31559/TCP   72s
+rke2-bbb-pool1-xc5q8-j55dw:~ #
+```
